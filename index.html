@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teacher Voice Log</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    audio { margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+  <h2>🎙️ Voice Log</h2>
+  <p id="info">Loading...</p>
+
+  <button id="startBtn">Start Recording</button>
+  <button id="stopBtn" disabled>Stop & Upload</button>
+
+  <audio id="audioPlayback" controls></audio>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+  <script>
+    // Your Firebase config here 👇
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_BUCKET",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+    const db = firebase.firestore();
+
+    // Get teacherID & period from URL
+    const params = new URLSearchParams(window.location.search);
+    const teacherID = params.get('teacherID') || 'T001';
+    const period = params.get('period') || '1';
+
+    document.getElementById("info").innerText = `Teacher: ${teacherID} | Period: ${period}`;
+
+    let mediaRecorder;
+    let audioChunks = [];
+
+    const startBtn = document.getElementById("startBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const audioPlayback = document.getElementById("audioPlayback");
+
+    startBtn.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const fileName = `${teacherID}_period${period}_${Date.now()}.webm`;
+        const ref = storage.ref().child("voice_notes/" + fileName);
+        await ref.put(audioBlob);
+
+        const url = await ref.getDownloadURL();
+        audioPlayback.src = url;
+
+        await db.collection("logs").add({
+          teacherID,
+          period,
+          timestamp: new Date().toISOString(),
+          voiceNoteURL: url
+        });
+
+        alert("Voice note uploaded!");
+      };
+
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
+    };
+
+    stopBtn.onclick = () => {
+      mediaRecorder.stop();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+    };
+  </script>
+
+</body>
+</html>
