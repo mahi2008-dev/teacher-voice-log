@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Teacher Login</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input { display: block; margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h2>Teacher Login</h2>
+  <label>Index Number: <input id="index" /></label>
+  <label>Password: <input type="password" id="password" /></label>
+  <button onclick="login()">Login</button>
+  <p id="msg"></p>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "XXXX",
+      appId: "1:XXX:web:XXX"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function login() {
+      const index = document.getElementById("index").value;
+      const password = document.getElementById("password").value;
+      const code = new URLSearchParams(window.location.search).get("code");
+      const period = code.slice(-1); // assuming code ends in period number
+      const date = new Date().toISOString().split('T')[0];
+
+      db.ref("teachers/" + index).get().then(snapshot => {
+        if (!snapshot.exists()) {
+          msg.innerText = "Invalid index";
+          return;
+        }
+
+        const data = snapshot.val();
+        if (data.password !== password) {
+          msg.innerText = "Incorrect password";
+          return;
+        }
+
+        const time = new Date().toLocaleTimeString();
+        const path = `attendance/${index}/${date}_P${period}`;
+        db.ref(path).set({
+          name: data.name,
+          come_time: time
+        });
+
+        msg.innerText = "Checked in successfully!";
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Record Class Note</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    button { margin: 1rem 0; }
+  </style>
+</head>
+<body>
+  <h2>Voice Record for Class</h2>
+  <p id="status">Click "Start Recording" to begin.</p>
+  <button onclick="startRecording()">Start Recording</button>
+  <button onclick="stopRecording()" disabled>Stop Recording</button>
+  <button onclick="submitRecording()" disabled>Submit</button>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "XXXX",
+      appId: "1:XXX:web:XXX"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const storage = firebase.storage();
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get("code");
+    const period = code.slice(-1); // Example: code ends in period number
+    const date = new Date().toISOString().split('T')[0];
+
+    function startRecording() {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          audioChunks = [];
+          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder.start();
+          document.querySelector("button[onclick='stopRecording()']").disabled = false;
+          document.querySelector("button[onclick='startRecording()']").disabled = true;
+          document.getElementById("status").innerText = "Recording...";
+
+          mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        })
+        .catch(err => alert("Microphone access denied"));
+    }
+
+    function stopRecording() {
+      mediaRecorder.stop();
+      mediaRecorder.onstop = () => {
+        audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        document.getElementById("status").innerText = "Recording stopped.";
+        document.querySelector("button[onclick='submitRecording()']").disabled = false;
+      };
+    }
+
+    function submitRecording() {
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(audioBlob);
+      reader.onloadend = function () {
+        const index = prompt("Enter your Index Number to save:");
+        const path = `attendance/${index}/${date}_P${period}`;
+        const filename = `${index}_${date}_P${period}.webm`;
+        const storageRef = storage.ref("voices/" + filename);
+
+        storageRef.put(audioBlob).then(snapshot => {
+          snapshot.ref.getDownloadURL().then(url => {
+            const leaveTime = new Date().toLocaleTimeString();
+            db.ref(path).update({
+              leave_time: leaveTime,
+              voice_url: url
+            });
+            document.getElementById("status").innerText = "Voice note saved!";
+          });
+        });
+      };
+    }
+  </script>
+</body>
+</html>

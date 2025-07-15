@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel - Period Times</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input { margin: 0.5rem 0; }
+    button { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>Set Period Timings</h2>
+  <div id="form">
+    <div>
+      <label>Period 1 Start: <input type="time" id="p1s" /></label>
+      <label>End: <input type="time" id="p1e" /></label>
+    </div>
+    <div>
+      <label>Period 2 Start: <input type="time" id="p2s" /></label>
+      <label>End: <input type="time" id="p2e" /></label>
+    </div>
+    <button onclick="save()">Save Timings</button>
+    <p id="msg"></p>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "XXXX",
+      appId: "1:XXX:web:XXX"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function save() {
+      const times = {
+        1: { start: p1s.value, end: p1e.value },
+        2: { start: p2s.value, end: p2e.value }
+      };
+      db.ref("periodTimes").set(times).then(() => {
+        msg.innerText = "Timings saved!";
+      });
+    }
+  </script>
+</body>
+</html>
